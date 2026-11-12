@@ -139,7 +139,7 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
       <h3 className="spectrum-title" data-testid="spectrum-title">{label || job.request.name || `RA ${job.request.ra}°, Dec ${job.request.dec}°`}
         <small>{good.length} usable of {job.done} exposures{job.truncated ? ` (an even sample of the ${job.available.toLocaleString()} available)` : ''}{analysis?.median_snr != null ? ` · median signal-to-noise ${analysis.median_snr.toFixed(0)}` : ''}</small></h3>
       {moving && <p className="spectrum-note">Moving target: each exposure is measured at the position predicted for that moment ({job.request.position_source ? <a href={job.request.position_source}>IRSA table</a> : 'official prediction table'}), not at one sky position.</p>}
-      {analysis?.median_snr != null && analysis.median_snr < 3 && <p className="spectrum-note">Nothing is clearly detected at this position: the points scatter around zero. These are upper limits, not a spectrum of a source.</p>}
+      {analysis?.median_snr != null && analysis.median_snr < 3 && plain?.kind !== 'background' && <p className="spectrum-note">Nothing is clearly detected at this position: the points scatter around zero. These are upper limits, not a spectrum of a source.</p>}
       <PlainSummary summary={plain} guide={SPECTRUM_READING_GUIDE} guideTitle="How to read this chart" testId="spectrum-plain"/>
       <SpectrumChart points={job.points} series={series} binned={analysis.binned} features={features}
         results={analysis.mixed_seasons ? [] : analysis.features} reference={reference} lines={lines} log={log} onLog={setLog}/>

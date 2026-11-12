@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compareSummary, isComet, spectrumShape, spectrumSummary } from '../src/plainSummary.js';
+import { backgroundDominated, compareSummary, isComet, pahDip, spectrumShape, spectrumSummary } from '../src/plainSummary.js';
 
 const curve = fn => Array.from({length: 40}, (_, i) => {const wavelength_um = 0.75 + i * 0.11; return {status: 'ok', wavelength_um, flux_mjy: fn(wavelength_um), flux_err_mjy: 0.1};});
 const catalogue = [
@@ -79,4 +79,19 @@ test('a tracked star is not a comet, and saturated exposures are explained', () 
   const summary = spectrumSummary({analysis: {counts: {saturated: 21}, seasons: []}, points: [{status: 'saturated'}]});
   assert.equal(summary.headline, 'No usable measurements');
   assert.match(summary.sentences[0], /saturated/);
+});
+
+test('a spectrum pushed below zero by a brighter surrounding glow is explained, with its 3.3 µm PAH dip', () => {
+  // Shaped like a real case: about -1 to -4 mJy everywhere, plunging to about -18 mJy at 3.2–3.5 µm, three seasons.
+  const points = curve(w => w > 3.2 && w < 3.5 ? -18 : -1 - w / 2).map(point => ({...point, flux_err_mjy: 0.3}));
+  assert.ok(backgroundDominated(points));
+  assert.ok(pahDip(points));
+  const summary = spectrumSummary({analysis: {median_snr: -12, binned: [], features: [], seasons: [{}, {}, {}], variability: {status: 'not_measurable'}}, points, features: catalogue});
+  assert.equal(summary.kind, 'background');
+  assert.ok(summary.sentences.some(sentence => /3\.3 µm/.test(sentence)));
+  assert.ok(summary.sentences.some(sentence => /fixed feature of the sky/.test(sentence)));
+  // Pure noise around zero is still called faint, not background.
+  const noise = curve(w => Math.sin(w * 37) * 0.2).map(point => ({...point, flux_err_mjy: 0.3}));
+  assert.equal(backgroundDominated(noise), false);
+  assert.equal(spectrumSummary({analysis: {median_snr: 0.1, features: [], seasons: []}, points: noise}).kind, 'faint');
 });

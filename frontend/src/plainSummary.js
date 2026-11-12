@@ -16,6 +16,24 @@ const list = items => items.length <= 1 ? items.join('') : `${items.slice(0, -1)
 
 const SHORT = [0.75, 1.6], LONG = [3.6, 5.0];
 
+/* True when most measurements are clearly BELOW zero: the background ring around the aperture is
+   brighter than the aperture itself, so the subtraction comes out negative. */
+export function backgroundDominated(points) {
+  if (points.length < 5) return false;
+  const significant = sign => points.filter(point => sign * point.flux_mjy > 3 * point.flux_err_mjy).length;
+  const below = significant(-1), above = significant(1);
+  return below >= points.length / 2 && below > 2 * above;
+}
+
+/* True when the negative spectrum dips hardest around 3.3 µm, where PAH molecules glow: the
+   surrounding glow is rich in PAH emission. */
+export function pahDip(points) {
+  const level = ranges => median(points.filter(point => ranges.some(([low, high]) => point.wavelength_um >= low && point.wavelength_um <= high)).map(point => point.flux_mjy));
+  const core = level([[3.2, 3.45]]), sides = level([[2.95, 3.15], [3.6, 3.8]]);
+  const noise = median(points.map(point => point.flux_err_mjy));
+  return Number.isFinite(core) && Number.isFinite(sides) && core < sides - Math.max(3 * noise, 0.3 * Math.abs(sides));
+}
+
 /* How the brightness changes from the short (near-visible) to the long (heat) end of the range.
    Returns 'falling', 'rising', 'flat' or null when either end has too few measurements. */
 export function spectrumShape(points) {
@@ -67,6 +85,17 @@ export function spectrumSummary({analysis, points, features = [], comet = false}
   }
   const snr = analysis.median_snr;
   const sentences = [];
+  if (backgroundDominated(good)) {
+    const seasons = (analysis.seasons || []).length;
+    return {headline: 'The sky around this spot is brighter than the spot itself', kind: 'background',
+      sentences: [
+        'The dots sit below zero. To measure a spot, the app subtracts the glow of the sky beside it (about 40 to 75 arcseconds to either side). Here that surrounding glow is brighter than the spot, so the result comes out negative.',
+        'Negative light does not exist: this describes the neighbourhood, not an object. The spot is a darker gap inside bright, spread-out glow, or sits next to a bright object.',
+        ...(pahDip(good) ? ['The drop is deepest around 3.3 µm, the colour at which large carbon molecules (PAHs) glow. So the surrounding glow is rich in PAHs, typical of a star-forming cloud or a dusty galaxy close by.'] : []),
+        ...(seasons > 1 ? ['The visits are drawn in different colours and lie on top of each other, so this is a fixed feature of the sky, not an event.'] : []),
+        'To measure the glowing material itself, choose a position right on it in the sky map rather than the darker spot beside it.',
+      ]};
+  }
   if (snr != null && snr < 3) {
     return {headline: 'Nothing clearly visible here',
       sentences: ['SPHEREx does not clearly see a source at this position: the dots scatter around zero, which is what pure noise looks like.',
@@ -132,6 +161,7 @@ export const SPECTRUM_READING_GUIDE = [
   ['Each dot', 'is one SPHEREx photo measuring this target, through one colour of infrared light.'],
   ['Left to right', 'is the colour (wavelength, in micrometres µm). Left is just beyond red light; right is closer to heat.'],
   ['Higher', 'means brighter. The little vertical bars show how uncertain each dot is.'],
+  ['Below zero', 'means the sky right around the spot is brighter than the spot itself (its glow is subtracted).'],
   ['Dot colours', 'are visits about six months apart. If the colours overlap, nothing changed between visits.'],
   ['White line', 'is the average of nearby dots, to make the overall shape easier to see.'],
   ['Shaded labelled bands', 'are chemical fingerprints the app found. A dip means something in front is absorbing that colour (like ice); a bump means gas is glowing at that colour.'],
