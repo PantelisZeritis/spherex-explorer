@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SpectrumChart from './SpectrumChart';
+import PlainSummary from './PlainSummary';
+import { SPECTRUM_READING_GUIDE, isComet, spectrumSummary } from '../plainSummary';
 import { GUIDED_TARGETS } from '../spectrumTargets';
 import { describeFeature, fetchDemoSpectrum, fetchFeatures, fetchReference, fetchSpectrum, formatFlux, outcomeSummary,
   redshiftedLines, seasonLabel, seasonSeries, shortDate, startSpectrum, usablePoints, wideRange } from '../spectrum';
@@ -103,6 +105,7 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
   const moving = job?.request.kind === 'moving' || job?.request.tracked;
   const rejected = outcomeSummary(analysis?.counts);
   const change = analysis?.variability;
+  const plain = useMemo(() => job?.state === 'done' ? spectrumSummary({analysis, points: job.points, features, comet: isComet(job.request)}) : null, [job, analysis, features]);
   const download = () => {
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([csvOf(job)], {type: 'text/csv'}));
@@ -137,6 +140,7 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
         <small>{good.length} usable of {job.done} exposures{job.truncated ? ` (an even sample of the ${job.available.toLocaleString()} available)` : ''}{analysis?.median_snr != null ? ` · median signal-to-noise ${analysis.median_snr.toFixed(0)}` : ''}</small></h3>
       {moving && <p className="spectrum-note">Moving target: each exposure is measured at the position predicted for that moment ({job.request.position_source ? <a href={job.request.position_source}>IRSA table</a> : 'official prediction table'}), not at one sky position.</p>}
       {analysis?.median_snr != null && analysis.median_snr < 3 && <p className="spectrum-note">Nothing is clearly detected at this position: the points scatter around zero. These are upper limits, not a spectrum of a source.</p>}
+      <PlainSummary summary={plain} guide={SPECTRUM_READING_GUIDE} guideTitle="How to read this chart" testId="spectrum-plain"/>
       <SpectrumChart points={job.points} series={series} binned={analysis.binned} features={features}
         results={analysis.mixed_seasons ? [] : analysis.features} reference={reference} lines={lines} log={log} onLog={setLog}/>
       {rejected.length > 0 && <p className="spectrum-rejected">Not plotted: {rejected.join(', ')}.{analysis.counts.saturated > job.done / 4 ? ' This source is too bright for SPHEREx at some wavelengths.' : ''}</p>}

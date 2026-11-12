@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { MODES, detectorOf, formatSeparation, hoursApart, pairHints, requestComparison, suggestMode } from '../compareAdapter';
 import { formatUtcLabel, wavelengthLabel, parseUtc } from '../timeline';
 import DownloadProgress, { useElapsed } from './DownloadProgress';
+import PlainSummary from './PlainSummary';
+import { COMPARE_READING_GUIDE, compareSummary } from '../plainSummary';
 
 const number = (value, digits) => value == null ? '—' : Number(value).toFixed(digits);
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -80,6 +82,7 @@ export function ComparisonResult({result}) {
       <p>Predicted separation {number(result.moving_target.trajectory.separation_arcsec,2)} arcseconds over {number(Math.abs(result.moving_target.trajectory.elapsed_hours),3)} hours. This is ephemeris information, not measured motion.</p>
       <p>{result.moving_target.activity_conclusion} Dashed rings mark predicted positions. {result.moving_target.view==='comet_centered' ? 'Views follow the predicted comet; background stars move.' : 'Views share a fixed celestial grid.'}</p>
     </div>}
+    <PlainSummary summary={compareSummary(result)} guide={COMPARE_READING_GUIDE} guideTitle="How to read these views" testId="compare-plain"/>
     <p className="compare-explanation">{result.detection?.conclusion || 'These images can be viewed together, but their differences do not establish an astronomical change.'}</p>
     <p>{formatSeparation(result.validation.time_separation_hours)} between observations. {result.stretch.shared ? 'Before and After use the same display brightness scale.' : 'Each image uses its own display scale; brightness cannot be compared by eye.'}</p>
     <div className="compare-tabs" role="group" aria-label="Comparison view">

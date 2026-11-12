@@ -180,3 +180,18 @@
 .spectrum-columns>div{min-width:0}.spectrum-table td{overflow-wrap:anywhere}
 .spectrum-columns .spectrum-table{table-layout:fixed}.spectrum-columns .spectrum-table th:nth-child(2){width:27%}
 .spectrum-table td,.spectrum-table th{white-space:normal}
+/* "In plain words" summary card */
+.plain-summary{margin:14px 0 16px;padding:16px 18px;border:1px solid #2c4a5a;border-left:4px solid #80d7c2;border-radius:10px;background:#0f1f2a;max-width:900px}
+.plain-summary.plain-found{border-left-color:#f0b35a}.plain-summary.plain-blocked{border-left-color:#ff9f8c}.plain-summary.plain-faint,.plain-summary.plain-none{border-left-color:#8ea5bf}
+.plain-eyebrow{font-size:10px;font-weight:700;letter-spacing:1.8px;color:#80d7c2}
+.plain-headline{display:block;font:500 18px 'Space Grotesk',sans-serif;color:#eef4fa;margin:6px 0 8px}
+.plain-summary ul{margin:0;padding-left:18px}
+.plain-summary li{font-size:13px;line-height:1.65;color:#c9d6e6;margin:4px 0}
+.plain-guide{margin-top:12px;border-top:1px solid #223646;padding-top:10px}
+.plain-guide summary{cursor:pointer;color:#dce5f2;font-weight:500;font-size:12px}
+.plain-guide dl{margin:10px 0 0;padding:0;border:0;display:grid;grid-template-columns:minmax(110px,max-content) 1fr;gap:6px 14px}
+.plain-guide dl div{display:contents}
+.plain-guide dt{margin:0;font-size:12px;font-weight:700;color:#dce5f2}
+.plain-guide dd{margin:0;font:400 12px/1.6 'DM Sans',sans-serif;letter-spacing:0;color:#adc2d9}
+.plain-footnote{margin:10px 0 0;font-size:10.5px;color:#7c8ea6}
+@media(max-width:720px){.plain-guide dl{grid-template-columns:1fr}.plain-guide dd{margin-bottom:6px}}
