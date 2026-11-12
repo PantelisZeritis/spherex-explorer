@@ -125,7 +125,7 @@ The equivalent manual commands, after setup, are:
 npm --prefix frontend run dev
 ~~~
 
-Useful optional settings include SKYTRACKER_FITS_CACHE_DIR for the downloaded FITS cache, SKYTRACKER_FITS_MAX_BYTES for its per-file size limit, and SKYTRACKER_DEMO_DIR to point the backend at another validated demo bundle. The defaults work for the bundled data. See [backend/app/image_download.py](backend/app/image_download.py), [backend/app/compare_service.py](backend/app/compare_service.py), and [backend/app/demo.py](backend/app/demo.py) for the complete configuration and limits.
+Useful optional settings include SKYTRACKER_FITS_CACHE_DIR for the downloaded FITS cache, SKYTRACKER_FITS_MAX_BYTES for its per-file size limit, SKYTRACKER_S3_MIRROR=0 to use IRSA only instead of the AWS mirror, and SKYTRACKER_DEMO_DIR to point the backend at another validated demo bundle. The defaults work for the bundled data. See [backend/app/image_download.py](backend/app/image_download.py), [backend/app/compare_service.py](backend/app/compare_service.py), and [backend/app/demo.py](backend/app/demo.py) for the complete configuration and limits.
 
 ## Demo Mode
 
@@ -147,7 +147,7 @@ See [Demo architecture](docs/demo-architecture.md) and [target provenance](docs/
 
 Choose **Live Mode**, click the Aladin map or enter RA and Dec, then select **Search SPHEREx Observations**. The backend queries NASA/IPAC IRSA for actual observation metadata. Filter the results by detector or archive wavelength bounds, open an observation in the FITS viewer, or select two rows for comparison.
 
-Live Mode needs access to **IRSA** for searches and FITS cutouts and to the external sky-survey service for Aladin's background tiles. New images can take time to download and process; repeated requests may use the local cache. The inspector requests a small cutout by default and offers an explicit full-detector option. Search and image retrieval have bounded time and size limits; an unavailable archive returns an error rather than invented observations.
+Live Mode needs access to **IRSA** for searches and FITS cutouts and to the external sky-survey service for Aladin's background tiles. New images can take time to download and process; repeated requests may use the local cache. Image products are fetched from the AWS Open Data mirror of the IRSA archive and cut locally into cutouts byte-identical to IRSA's, falling back to IRSA's own cutout service on any mirror problem; a new view typically takes under 10 seconds instead of about 20. A tray in the corner lists the downloads the server is working on, with a percentage only when the source states a size. See [Live Mode speed](docs/live-mode-speed.md). The inspector requests a small cutout by default and offers an explicit full-detector option. Search and image retrieval have bounded time and size limits; an unavailable archive returns an error rather than invented observations.
 
 Same-detector images can still represent different wavelengths at the selected position. A difference preview or an accepted visual comparison does not by itself establish physical variability. Scientific screening stays unavailable when essential calibration, spectral, registration, PSF, or uncertainty evidence is missing.
 
