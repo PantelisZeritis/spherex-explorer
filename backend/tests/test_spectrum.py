@@ -394,7 +394,18 @@ def test_preloaded_comet_spectrum_shows_carbon_dioxide_gas_offline():
     if response.status_code == 503:
         pytest.skip('demo bundle is not installed')
     body = response.json()
-    assert body['request']['tracked'] is True and body['analysis']['counts'].get('ok', 0) >= 15
+    assert body['request']['tracked'] is True and body['request']['comet'] is True and body['analysis']['counts'].get('ok', 0) >= 15
     co2 = by_id(body['analysis']['features'])['co2']
     assert co2['status'] == 'detected' and co2['kind'] == 'emission' and co2['strength'] > 10
     assert TestClient(app).get('/api/spectrum/demo/not-a-target').status_code == 404
+
+
+def test_preloaded_proper_motion_star_is_tracked_but_not_treated_as_a_comet():
+    """Barnard's Star: the aperture follows its proper motion, but it is tested for ices, not comet gas."""
+    response = TestClient(app).get('/api/spectrum/demo/barnard')
+    if response.status_code == 503:
+        pytest.skip('demo bundle is not installed')
+    body = response.json()
+    assert body['request']['tracked'] is True and body['request']['comet'] is False
+    tested = {feature['id'] for feature in body['analysis']['features']}
+    assert 'h2o_ice' in tested and not tested & {'co_gas', 'h2o_gas'}

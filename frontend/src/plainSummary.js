@@ -54,7 +54,7 @@ const SHORT_NAMES = {h2o_ice: 'water', co2: 'carbon dioxide', co: 'carbon monoxi
   br_alpha: 'hydrogen', pa_alpha: 'hydrogen', pa_beta: 'hydrogen', he_i: 'helium', s_iii: 'sulphur'};
 
 /* True for a comet (as opposed to a fast-moving star whose position is also tracked). */
-export const isComet = request => request?.kind === 'moving' || Boolean(request?.tracked && /comet/i.test(request?.name || ''));
+export const isComet = request => request?.kind === 'moving' || request?.comet === true;
 
 /* The plain-language reading of one spectrum. `features` is the catalogue from /api/spectrum/features. */
 export function spectrumSummary({analysis, points, features = [], comet = false}) {

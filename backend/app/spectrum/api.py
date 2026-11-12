@@ -100,7 +100,9 @@ def _demo(target_id):
     target = next((item for item in manifest.targets if item.id == target_id), None)
     if target is None or not target.observations:
         raise KeyError(target_id)
-    points, tracked = [], False
+    # Tracked means the aperture follows the target (a comet's ephemeris or a star's proper motion);
+    # only comets are tested for gas emission instead of ices.
+    points, tracked, comet = [], False, target_id in moving.TARGETS
     for observation in target.observations:
         path = demo.asset_path(demo.DEFAULT_ROOT, observation.fits_path)
         if demo.digest(path) != observation.fits_sha256:
@@ -124,8 +126,8 @@ def _demo(target_id):
     return {'id': f'demo-{target_id}', 'state': 'done', 'total': len(points), 'done': len(points), 'available': len(points),
             'truncated': False, 'megabytes_read': 0, 'elapsed_s': 0,
             'message': f'{sum(point["status"] == "ok" for point in points)} of {len(points)} preloaded exposures gave a usable measurement.',
-            'request': {'kind': 'demo', 'target': target_id, 'name': target.name, 'ra': target.ra, 'dec': target.dec, 'tracked': tracked},
-            'analysis': analysis.summarise(points, tracked), 'points': [{key: point.get(key) for key in POINT_KEYS} for point in points],
+            'request': {'kind': 'demo', 'target': target_id, 'name': target.name, 'ra': target.ra, 'dec': target.dec, 'tracked': tracked, 'comet': comet},
+            'analysis': analysis.summarise(points, comet), 'points': [{key: point.get(key) for key in POINT_KEYS} for point in points],
             'method': {**METHOD, 'source': 'Preloaded SPHEREx Level 2 cutouts in the local demo bundle (checksums verified).'}}
 
 

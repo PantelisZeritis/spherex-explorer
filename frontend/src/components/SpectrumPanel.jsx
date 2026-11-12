@@ -166,7 +166,7 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
                 <td>{season.reference ? '1 (reference)' : `${season.relative_flux.toFixed(2)} ± ${season.relative_flux_err.toFixed(2)}`}</td>
                 <td>{season.bands.map(band => `D${band.detector} ${band.relative_flux.toFixed(2)}`).join(' · ') || '—'}</td></tr>)}
             </tbody></table>
-            <p className="spectrum-caveat">Compared at matching wavelengths only.{moving ? ' A moving target also changes distance and viewing angle between seasons.' : ' A star with fast proper motion drifts out of the fixed aperture and can mimic fading.'}</p>
+            <p className="spectrum-caveat">Compared at matching wavelengths only.{isComet(job.request) ? ' A moving target also changes distance and viewing angle between seasons.' : moving ? '' : ' A star with fast proper motion drifts out of the fixed aperture and can mimic fading.'}</p>
           </>}
         </div>
       </div>

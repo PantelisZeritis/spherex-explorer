@@ -73,8 +73,8 @@ test('comparison summaries follow the server verdict', () => {
 });
 
 test('a tracked star is not a comet, and saturated exposures are explained', () => {
-  assert.equal(isComet({kind: 'demo', tracked: true, name: 'Barnard’s Star'}), false);
-  assert.equal(isComet({kind: 'demo', tracked: true, name: '3I/ATLAS — interstellar comet'}), true);
+  assert.equal(isComet({kind: 'demo', tracked: true, comet: false}), false);
+  assert.equal(isComet({kind: 'demo', tracked: true, comet: true}), true);
   assert.equal(isComet({kind: 'moving'}), true);
   const summary = spectrumSummary({analysis: {counts: {saturated: 21}, seasons: []}, points: [{status: 'saturated'}]});
   assert.equal(summary.headline, 'No usable measurements');
