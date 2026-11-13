@@ -231,3 +231,40 @@ export const COMPARE_READING_GUIDE = [
   ['Violet', 'marks pixels with no valid data in one of the photos.'],
   ['Cyan circles', 'are spots the software flagged as possibly changed (or, for a comet, its predicted position).'],
 ];
+
+const mjy = value => value >= 10 ? `${Math.round(value)} mJy` : `${value.toPrecision(2)} mJy`;
+const brightest = source => Math.max(...[source.w1_mjy, source.w2_mjy].filter(Number.isFinite));
+
+/* Compass direction from (ra, dec) to (toRa, toDec), as seen on a north-up sky map. */
+export function direction(ra, dec, toRa, toDec) {
+  let east = (toRa - ra) * Math.cos(dec * Math.PI / 180);
+  if (east > 180) east -= 360; else if (east < -180) east += 360;
+  const north = toDec - dec;
+  const angle = (Math.atan2(east, north) * 180 / Math.PI + 360) % 360;
+  return ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(angle / 45) % 8];
+}
+
+/* Plain-language advice from /api/spectrum/nearby. `kind` is the spectrum summary kind, if measured. */
+export function nearbyAdvice(data, kind = null) {
+  if (!data) return null;
+  const {here, suggestion, ring = [], too_bright_nearby: tooBright = [], radius_arcsec: radius = 75} = data;
+  const sentences = [];
+  const where = source => `${Math.round(source.separation_arcsec)}″ to the ${direction(data.ra, data.dec, source.ra, source.dec)}`;
+  if (data.reason === 'nothing_here') {
+    sentences.push(`No catalogued star or galaxy sits exactly here. The nearest one bright enough to measure is ${where(suggestion)}, at about ${mjy(brightest(suggestion))} in infrared light.`);
+    if (suggestion.separation_arcsec < (data.aperture_arcsec ?? 15)) sentences.push('It is close enough that part of its light already falls in the measuring circle here; snapping centres on it for a cleaner spectrum.');
+  } else if (data.reason === 'brighter_neighbour') {
+    sentences.push(`The source here is faint (about ${mjy(brightest(here))}). A neighbour ${where(suggestion)} is about ${Math.round(brightest(suggestion) / brightest(here))} times brighter and will give a much clearer spectrum.`);
+  } else if (data.reason === 'source_here') {
+    sentences.push(`A catalogued source sits right here (about ${mjy(brightest(here))} in infrared light), so you are on target.${kind === 'faint' ? ' It may simply be too faint for these measurements.' : ''}`);
+  } else {
+    sentences.push(`No catalogued source within ${radius}″ is bright enough to give a clear spectrum.`);
+  }
+  if (kind === 'background') {
+    sentences.push(ring.length
+      ? `${ring[0].name} (about ${mjy(brightest(ring[0]))}) lies ${where(ring[0])}, about where the app samples the surrounding sky glow. Light from it can make this spot come out below zero.`
+      : 'No bright catalogued star lies where the surrounding sky glow is sampled, so the brighter surroundings are most likely spread-out glowing gas and dust.');
+  }
+  if (tooBright.length) sentences.push(`${tooBright[0].name}, ${where(tooBright[0])}, is too bright for SPHEREx (it would saturate), so it is not suggested.`);
+  return {sentences, suggestion: suggestion || null};
+}

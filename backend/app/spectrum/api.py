@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .. import demo
 from ..irsa import IRSAUnavailable
-from . import analysis, archive, moving
+from . import analysis, archive, moving, nearby
 from .photometry import measure_hdul
 from .service import DEFAULT_EXPOSURES, MAX_EXPOSURES, METHOD, POINT_KEYS, SpectrumService
 
@@ -74,6 +74,16 @@ def reference(ra: float = Query(..., ge=0, lt=360, allow_inf_nan=False),
     try:
         return {'status': 'live', 'ra': ra, 'dec': dec, 'match_radius_arcsec': 4.0, 'photometry': _reference(round(ra, 5), round(dec, 5)),
                 'note': 'Catalogue epochs are 1997-2001 (2MASS) and 2010 (WISE); variable or moving sources will differ.'}
+    except IRSAUnavailable as exc:
+        return unavailable(503, 'catalogue_unavailable', str(exc))
+
+
+@router.get('/nearby')
+def nearby_sources(ra: float = Query(..., ge=0, lt=360, allow_inf_nan=False),
+                   dec: float = Query(..., ge=-90, le=90, allow_inf_nan=False)):
+    """AllWISE sources within 75 arcsec, and the nearest measurable one to move onto, if any."""
+    try:
+        return {'status': 'live', 'ra': ra, 'dec': dec, **nearby.nearby(round(ra, 5), round(dec, 5))}
     except IRSAUnavailable as exc:
         return unavailable(503, 'catalogue_unavailable', str(exc))
 

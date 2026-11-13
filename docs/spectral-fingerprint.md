@@ -111,6 +111,10 @@ the transatlantic reads. Results are cached on disk for six hours
 - `GET /api/spectrum/demo/{target}`: the same analysis on the preloaded bundle, offline.
 - `GET /api/spectrum/reference?ra=&dec=`: nearest 2MASS and AllWISE photometry within 4″.
 - `GET /api/spectrum/features`: band windows, thresholds and the method text.
+- `GET /api/spectrum/nearby?ra=&dec=`: AllWISE sources within 75″ (via IRSA Gator, about 2 s), the
+  nearest one bright enough to measure (0.5 to 100 mJy at 3.4 or 4.6 µm, and at least 3 times brighter
+  than anything already at the position), and bright sources about where the background is sampled.
+  The panel offers it before a measurement and on its own when a spectrum comes out empty or negative.
 
 Settings: `SKYTRACKER_SPECTRUM_WORKERS` (32), `SKYTRACKER_SPECTRUM_MAX_EXPOSURES` (1500),
 `SKYTRACKER_SPECTRUM_CACHE_DIR`.

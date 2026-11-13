@@ -148,3 +148,4 @@ export const fetchSpectrum = async (id, {signal} = {}) => json(await fetch(`/api
 export const fetchDemoSpectrum = async (target, {signal} = {}) => json(await fetch(`/api/spectrum/demo/${target}`, {signal}));
 export const fetchFeatures = async ({signal} = {}) => json(await fetch('/api/spectrum/features', {signal}));
 export const fetchReference = async ({ra, dec}, {signal} = {}) => json(await fetch(`/api/spectrum/reference?${new URLSearchParams({ra, dec})}`, {signal}));
+export const fetchNearby = async ({ra, dec}, {signal} = {}) => json(await fetch(`/api/spectrum/nearby?${new URLSearchParams({ra, dec})}`, {signal}));

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SpectrumChart from './SpectrumChart';
 import PlainSummary from './PlainSummary';
-import { SPECTRUM_READING_GUIDE, isComet, spectrumSummary } from '../plainSummary';
+import { SPECTRUM_READING_GUIDE, isComet, nearbyAdvice, spectrumSummary } from '../plainSummary';
 import { GUIDED_TARGETS } from '../spectrumTargets';
-import { describeFeature, fetchDemoSpectrum, fetchFeatures, fetchReference, fetchSpectrum, formatFlux, outcomeSummary,
+import { describeFeature, fetchDemoSpectrum, fetchFeatures, fetchNearby, fetchReference, fetchSpectrum, formatFlux, outcomeSummary,
   redshiftedLines, seasonLabel, seasonSeries, shortDate, startSpectrum, usablePoints, wideRange } from '../spectrum';
 
 const POLL_MS = 1500;
@@ -37,11 +37,28 @@ function Findings({results, features, thresholds}) {
   </>;
 }
 
+function NearbyCard({state, kind, onMeasure, disabled}) {
+  if (!state) return null;
+  if (state.status === 'loading') return <p className="spectrum-note nearby-card" role="status">Looking for catalogued sources nearby…</p>;
+  if (state.status === 'error') return <p className="spectrum-note nearby-card" role="status">{state.message}</p>;
+  const advice = nearbyAdvice(state.data, kind);
+  const target = advice.suggestion;
+  return <aside className="nearby-card" aria-label="Nearby sources" data-testid="nearby-card">
+    <div className="plain-eyebrow">NEARBY SOURCES</div>
+    {advice.sentences.map(sentence => <p key={sentence}>{sentence}</p>)}
+    {target && <button type="button" onClick={() => onMeasure(target)} disabled={disabled} data-testid="snap-measure">
+      Snap to {target.name} and measure</button>}
+    <small>Positions and brightness from the AllWISE catalogue (2010), within {state.data.radius_arcsec}″. Fast-moving or variable stars may have changed since.</small>
+  </aside>;
+}
+
 export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
   const [job, setJob] = useState(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const [catalogue, setCatalogue] = useState(null), [reference, setReference] = useState(null);
   const [logChoice, setLog] = useState(null), [redshift, setRedshift] = useState(''), [label, setLabel] = useState('');
   const run = useRef(null);
+  const [nearby, setNearby] = useState(null);
+  const nearbyRun = useRef(null);
   const stop = () => {run.current?.abort(); run.current = null;};
   useEffect(() => {
     const controller = new AbortController();
@@ -51,6 +68,15 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
 
   // A new sky position or mode makes the shown spectrum stale.
   const key = mode === 'demo' ? `demo:${demoTargetId}` : `${selected.ra}|${selected.dec}`;
+  useEffect(() => {nearbyRun.current?.abort(); setNearby(null);}, [key]);
+  function findNearby(point) {
+    nearbyRun.current?.abort();
+    const controller = new AbortController(); nearbyRun.current = controller;
+    setNearby({status: 'loading', key: `${point.ra}|${point.dec}`});
+    fetchNearby(point, {signal: controller.signal})
+      .then(data => {if (nearbyRun.current === controller) setNearby({status: 'done', data});})
+      .catch(err => {if (nearbyRun.current === controller && !controller.signal.aborted) setNearby({status: 'error', message: err.message});});
+  }
   const pending = useRef(null);
   useEffect(() => {
     if (pending.current?.key === key) {const body = pending.current.body; pending.current = null; measure(body, pending.label); return;}
@@ -84,13 +110,17 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
     } finally {if (run.current === controller) setBusy(false);}
   }
 
-  function guided(target) {
-    if (target.moving) {measure({target: target.moving}, target.name); return;}
-    const point = {ra: target.ra, dec: target.dec};
-    if (point.ra === selected.ra && point.dec === selected.dec) {measure(point, target.name); return;}
-    pending.current = {key: `${point.ra}|${point.dec}`, body: point}; pending.label = target.name;
+  function measureAt(point, name) {
+    if (point.ra === selected.ra && point.dec === selected.dec) {measure(point, name); return;}
+    pending.current = {key: `${point.ra}|${point.dec}`, body: point}; pending.label = name;
     onGo(point);
   }
+
+  function guided(target) {
+    if (target.moving) {measure({target: target.moving}, target.name); return;}
+    measureAt({ra: target.ra, dec: target.dec}, target.name);
+  }
+  const snap = source => measureAt({ra: Number(source.ra.toFixed(6)), dec: Number(source.dec.toFixed(6))}, source.name);
 
   const features = catalogue?.features || [];
   const analysis = job?.analysis;
@@ -106,6 +136,9 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
   const rejected = outcomeSummary(analysis?.counts);
   const change = analysis?.variability;
   const plain = useMemo(() => job?.state === 'done' ? spectrumSummary({analysis, points: job.points, features, comet: isComet(job.request)}) : null, [job, analysis, features]);
+  // An empty or negative spectrum at a fixed position: look for a measurable source nearby, once.
+  const lost = mode === 'live' && job?.request.kind !== 'moving' && job?.request.ra != null && (plain?.kind === 'faint' || plain?.kind === 'background');
+  useEffect(() => {if (lost && !nearby) findNearby({ra: job.request.ra, dec: job.request.dec});}, [lost, job]);
   const download = () => {
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([csvOf(job)], {type: 'text/csv'}));
@@ -124,6 +157,9 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
       <div className="spectrum-guided"><span>Or start with a target whose answer is known:</span>
         {GUIDED_TARGETS.map(target => <button type="button" className="secondary" key={target.id} disabled={running} onClick={() => guided(target)} title={target.look}>{target.name}</button>)}
       </div>
+      {!job && <button type="button" className="secondary nearby-find" disabled={running || nearby?.status === 'loading'} onClick={() => findNearby(selected)} data-testid="find-nearby">
+        Not sure the position is on a star or galaxy? Find the nearest measurable source</button>}
+      {!job && <NearbyCard state={nearby} onMeasure={snap} disabled={running}/>}
     </div>}
 
     {busy && <div className="download-progress" role="status" data-testid="spectrum-progress">
@@ -141,6 +177,7 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
       {moving && <p className="spectrum-note">Moving target: each exposure is measured at the position predicted for that moment ({job.request.position_source ? <a href={job.request.position_source}>IRSA table</a> : 'official prediction table'}), not at one sky position.</p>}
       {analysis?.median_snr != null && analysis.median_snr < 3 && plain?.kind !== 'background' && <p className="spectrum-note">Nothing is clearly detected at this position: the points scatter around zero. These are upper limits, not a spectrum of a source.</p>}
       <PlainSummary summary={plain} guide={SPECTRUM_READING_GUIDE} guideTitle="How to read this chart" testId="spectrum-plain"/>
+      {mode === 'live' && <NearbyCard state={nearby} kind={plain?.kind} onMeasure={snap} disabled={running}/>}
       <SpectrumChart points={job.points} series={series} binned={analysis.binned} features={features}
         results={analysis.mixed_seasons ? [] : analysis.features} reference={reference} lines={lines} log={log} onLog={setLog}/>
       {rejected.length > 0 && <p className="spectrum-rejected">Not plotted: {rejected.join(', ')}.{analysis.counts.saturated > job.done / 4 ? ' This source is too bright for SPHEREx at some wavelengths.' : ''}</p>}
