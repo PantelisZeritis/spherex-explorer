@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { chronologicalFrames } from '../../src/timeline.js';
 
-test('live cutout FITS renders with per-pixel WCS through the inspector', async ({page}) => {
+test('live cutout FITS renders with per-pixel WCS through the inspector', {tag: '@live'}, async ({page}) => {
   test.skip(process.env.SKYTRACKER_LIVE_FITS !== '1', 'Opt-in: downloads a real IRSA cutout.');
   test.setTimeout(780000);
   await page.goto('/',{waitUntil:'domcontentloaded'});
@@ -27,7 +27,7 @@ test('live cutout FITS renders with per-pixel WCS through the inspector', async 
   console.log(`Live FITS: ${metadata.bytes} bytes; IMAGE HDU ${metadata.science_hdu}; cache_hit=${metadata.cache_hit}; center wavelength=${metadata.center.spectral.wavelength_um} µm`);
 });
 
-test('live timeline switches real FITS images while the viewer shares preparation', async ({page}) => {
+test('live timeline switches real FITS images while the viewer shares preparation', {tag: '@live'}, async ({page}) => {
   test.skip(process.env.SKYTRACKER_LIVE_FITS !== '1', 'Opt-in: downloads two real IRSA FITS cutouts.');
   test.setTimeout(1500000);
   const busy = [];

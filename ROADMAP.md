@@ -2,7 +2,7 @@
 
 Proposed improvements to Arcadian SkyTracker, grouped by what each one adds. These are ideas, not commitments, and none of them is a current detection or discovery claim.
 
-## Reach: use it without installing anything
+## Reach: make it easier to use
 
 - **Search by object name.** Live Mode takes a map click or RA/Dec only. A name resolver (CDS Sesame) would let people type "M31" or "Betelgeuse".
 - **Docker image.** One command to run both servers, with the Python and Node versions pinned.
@@ -25,12 +25,11 @@ Proposed improvements to Arcadian SkyTracker, grouped by what each one adds. The
 
 ## Project health
 
-- **Continuous integration.** There is no CI. Backend tests, frontend unit tests, the build and the offline Playwright specs could run on every push, with the live-archive specs on a schedule.
 - **Split dependencies and add linting.** `backend/requirements.txt` mixes runtime packages with pytest, and there is no linter or formatter configuration.
 - **Accessibility pass.** Keyboard and screen-reader support exists in places, but the sky map and charts need a proper audit.
 
 ## Suggested order
 
-1. CI. They are the cheapest way to put the project in front of more people, and none needs new scientific validation.
+1. Search by object name. It is a small change that makes Live Mode much easier for visitors, and it needs no new scientific validation.
 2. Horizons-based moving objects and light curves, the strongest new features. Each needs a `docs/` write-up validated against known sources, as the existing features have.
 3. The learning features and the remaining project-health items.

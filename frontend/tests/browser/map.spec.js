@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-test('real Aladin initializes, clicks select ICRS coordinates, marker and navigation work', async ({page}) => {
+test('real Aladin initializes, clicks select ICRS coordinates, marker and navigation work', {tag: '@live'}, async ({page}) => {
   page.on('pageerror', error => console.log('Browser error:', error.message));
   page.on('requestfailed', req => console.log('Network failure:', req.url(), req.failure()?.errorText));
   const tile = page.waitForResponse(response => response.url().includes('stpubdata.s3.us-east-1.amazonaws.com/mast/skybackgrounds/DSSColor/Norder') && response.status() === 200, {timeout:30000});
@@ -52,7 +52,7 @@ test('unavailable API is explicit and mobile layout fits', async ({page}) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
-test('search button returns live IRSA metadata through the Vite proxy', async ({page}) => {
+test('search button returns live IRSA metadata through the Vite proxy', {tag: '@live'}, async ({page}) => {
   await page.goto('/', {waitUntil:'domcontentloaded'});
   const responsePromise = page.waitForResponse(response => response.url().includes('/api/observations?'));
   await page.getByRole('button',{name:'Search SPHEREx Observations'}).click();

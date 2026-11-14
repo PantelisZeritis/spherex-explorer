@@ -179,13 +179,17 @@ npm --prefix frontend run build
 npm --prefix frontend run test:browser
 ~~~
 
-Backend tests and most browser tests use mocked network responses or labeled synthetic fixtures. The standard Playwright suite also includes a live IRSA metadata search and map checks that need network access. Its live FITS download tests are **opt-in** with SKYTRACKER_LIVE_FITS=1 and can transfer real archive data; leave that setting unset for routine checks.
-
-Playwright starts its own test servers on ports **8001** and **5174**. Its configuration expects Chrome at /usr/bin/google-chrome by default; set CHROME_PATH to an absolute Chrome executable path on another system. For focused local-data browser checks without an archive query:
+Backend tests and most browser tests use mocked network responses or labeled synthetic fixtures. The browser tests that need the internet (a live IRSA metadata search, real sky-map tiles, and real FITS downloads) are tagged **@live**. The live FITS download tests are also **opt-in** with SKYTRACKER_LIVE_FITS=1 and can transfer real archive data; leave that setting unset for routine checks. To run only the tests that need no internet:
 
 ~~~bash
-npm --prefix frontend run test:browser -- tests/browser/demo.spec.js tests/browser/comet-tracking.spec.js
+npm --prefix frontend run test:browser -- --grep-invert @live
 ~~~
+
+Playwright starts its own test servers on ports **8001** and **5174**. It uses Google Chrome at /usr/bin/google-chrome if present; set CHROME_PATH to use another Chrome executable. Without either, it uses Playwright's own Chromium, installed once with `npx --prefix frontend playwright install chromium`.
+
+### Continuous integration
+
+GitHub Actions runs [.github/workflows/ci.yml](.github/workflows/ci.yml) on every push to main and every pull request: the backend tests on Python 3.12 and 3.15, the frontend unit tests and build, and the browser tests that need no internet. [.github/workflows/live.yml](.github/workflows/live.yml) runs the @live tests every Monday and can be started by hand from the Actions tab, optionally including the real FITS downloads. Keeping the live tests separate means an archive outage does not mark every change as broken.
 
 The developer-only synthetic validation UI is hidden by default and can be enabled with VITE_ENABLE_DETECTION_LAB=true when starting Vite. Its results must never be presented as real astronomical detections.
 

@@ -24,7 +24,9 @@ npm --prefix frontend run test:browser -- tests/browser/demo.spec.js   # single 
 ```
 
 - Use `python -m pytest` from the root, not bare `pytest`. There is no conftest or pyproject; tests import `backend.app...`, which works only because `-m` puts the cwd on `sys.path`.
-- Playwright starts its own servers on **8001/5174** (it needs `.venv` to exist) and expects Chrome at `/usr/bin/google-chrome` (override with `CHROME_PATH`). Some specs hit live IRSA. Tests that download real FITS are skipped unless `SKYTRACKER_LIVE_FITS=1`.
+- Playwright starts its own servers on **8001/5174** (it needs `.venv` to exist). It uses `/usr/bin/google-chrome` if present, else `CHROME_PATH`, else Playwright's own Chromium (`npx playwright install chromium`).
+- Browser tests that need the internet are tagged `{tag: '@live'}`; `--grep-invert @live` runs the rest. Tests that download real FITS are also skipped unless `SKYTRACKER_LIVE_FITS=1`. The validation-lab spec is skipped unless Vite starts with `VITE_ENABLE_DETECTION_LAB=true`.
+- CI (`.github/workflows/ci.yml`) runs the backend tests on Python 3.12 and 3.15, frontend unit tests and build, and the non-`@live` browser tests (plus the validation lab with its flag). `live.yml` runs the `@live` tests weekly and on demand. Tag any new test that reaches a real external service `@live`, or CI will fail whenever that service is down.
 - `scripts/smoke_*.py`, `scripts/check_mirror_cutouts.py` and `scripts/spectrum.py` are live network checks against real archives. They are not part of the test suite.
 - `VITE_ENABLE_DETECTION_LAB=true` shows the developer-only synthetic validation UI.
 - Runtime settings are `SKYTRACKER_*` environment variables, read in `image_download.ImageSettings.from_env`, `compare_service.CompareCacheSettings`, `spectrum/service.py` and `demo.py`. Caches go under `.cache/` (gitignored).

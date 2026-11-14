@@ -51,6 +51,8 @@ test('measuring a position fills in a spectrum, names the bands found and says w
   await expect(panel.locator('.spectrum-legend')).toContainText('24 Aug 2025');
   await expect(panel.locator('.spectrum-legend')).toContainText('2MASS / WISE catalogue');
   // Hovering reads out the nearest exposure; the table and the CSV carry every value.
+  // The chart sits below the fold; a pointer move outside the viewport reaches no element.
+  await panel.getByTestId('spectrum-svg').scrollIntoViewIfNeeded();
   const box = await panel.getByTestId('spectrum-svg').boundingBox();
   await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.3);
   await expect(panel.locator('.spectrum-tooltip')).toContainText('µm · detector');
