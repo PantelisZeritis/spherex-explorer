@@ -18,7 +18,9 @@ const MODES = [
   {id:'demo', icon:'▶', badge:'Works offline', title:'Demo Mode', tagline:'Instant tour of preloaded real observations', points:['Curated targets with spectra, ready immediately','No network or IRSA queries required'], best:'presentations & a quick first look'},
 ];
 export default function App() {
-  const [mode, setMode] = useState(() => new URLSearchParams(window.location.search).get('mode') === 'demo' ? 'demo' : 'live');
+  // Demo Mode is hidden from visitors: only an explicit ?mode=demo URL opens it, and only then is the mode choice shown.
+  const [showModes] = useState(() => new URLSearchParams(window.location.search).get('mode') === 'demo');
+  const [mode, setMode] = useState(() => showModes ? 'demo' : 'live');
   const [manifest, setManifest] = useState(null), [demoTargetId, setDemoTargetId] = useState('');
   const [filter, setFilter] = useState(ALL_FILTER), [filterError, setFilterError] = useState('');
   const [selected, setSelected] = useState({ra: 210.80227, dec: 54.34895});
@@ -97,7 +99,7 @@ export default function App() {
   return <div className="app"><header><a className="brand" href="/" aria-label="Arcadian SkyTracker home"><span className="brand-icon">✳</span><span>ARCADIAN<span className="brand-sub">SKYTRACKER</span></span></a><div className="header-context">NASA SPACE APPS CHALLENGE 2026 <span>Planet X & SPHEREx · Team prototype</span></div><span className="milestone">03 / SPECTRAL FINGERPRINTS</span></header>
     <main>
     <section className="panel mode-panel" aria-label="Data mode">
-      <fieldset className="mode-choice" role="radiogroup" aria-label="Data mode">
+      {showModes && <fieldset className="mode-choice" role="radiogroup" aria-label="Data mode">
         <legend>Choose how to explore</legend>
         {MODES.map(option => <label key={option.id} className={`mode-card mode-${option.id}${mode === option.id ? ' is-active' : ''}`}>
           <input type="radio" name="data-mode" value={option.id} checked={mode === option.id} onChange={() => changeMode(option.id)}/>
@@ -107,7 +109,7 @@ export default function App() {
           <ul>{option.points.map(point => <li key={point}>{point}</li>)}</ul>
           <span className="mode-best">Best for: {option.best}</span>
         </label>)}
-      </fieldset>
+      </fieldset>}
       <p role="note" className="mode-note">{mode === 'demo' ? 'DEMO MODE · Local, preloaded real SPHEREx data. No live IRSA query. PNGs are display previews, not scientific arrays.' : 'LIVE MODE · Observation searches and new cutouts require NASA/IPAC IRSA network access.'}</p>
       {mode === 'demo' && <>
         {loading && <p role="status">Loading preloaded target manifest…</p>}
