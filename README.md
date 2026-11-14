@@ -27,6 +27,7 @@ The platform is intended for students and educators, astronomy enthusiasts and c
 | Feature | What it does |
 | --- | --- |
 | Interactive sky map | Uses Aladin Lite and a DSS2 optical sky background to select ICRS coordinates in Live Mode. |
+| Search by name | Finds an object such as M31 or Betelgeuse through the CDS Sesame resolver (SIMBAD, NED, VizieR) and moves the map to it. |
 | Live SPHEREx search | Queries NASA/IPAC IRSA for observations covering a selected sky position; filters by detector or archive wavelength bounds. |
 | FITS image inspector | Opens bounded SPHEREx cutouts, shows a display preview, and provides pixel, WCS, and available spectral readouts. Original FITS bytes remain available to download. |
 | Time Slider | Browses observations by actual UTC time, with playback and on-demand comparison of suitable epochs. |
@@ -145,7 +146,7 @@ See [Demo architecture](docs/demo-architecture.md) and [target provenance](docs/
 
 ## Live Mode
 
-Choose **Live Mode**, click the Aladin map or enter RA and Dec, then select **Search SPHEREx Observations**. The backend queries NASA/IPAC IRSA for actual observation metadata. Filter the results by detector or archive wavelength bounds, open an observation in the FITS viewer, or select two rows for comparison.
+Choose **Live Mode**, then type an object's name (such as M31, Betelgeuse or Orion Nebula) and press **Find**, click the Aladin map, or enter RA and Dec. Then select **Search SPHEREx Observations**. A name is looked up through the CDS Sesame resolver, and the panel shows the catalogue name and object type it found, so you can check it is the object you meant. Planets and other Solar System bodies move, so they have no fixed position to look up. The backend queries NASA/IPAC IRSA for actual observation metadata. Filter the results by detector or archive wavelength bounds, open an observation in the FITS viewer, or select two rows for comparison.
 
 Live Mode needs access to **IRSA** for searches and FITS cutouts and to the external sky-survey service for Aladin's background tiles. New images can take time to download and process; repeated requests may use the local cache. Image products are fetched from the AWS Open Data mirror of the IRSA archive and cut locally into cutouts byte-identical to IRSA's, falling back to IRSA's own cutout service on any mirror problem; a new view typically takes under 10 seconds instead of about 20. A tray in the corner lists the downloads the server is working on, with a percentage only when the source states a size. See [Live Mode speed](docs/live-mode-speed.md). The inspector requests a small cutout by default and offers an explicit full-detector option. Search and image retrieval have bounded time and size limits; an unavailable archive returns an error rather than invented observations.
 

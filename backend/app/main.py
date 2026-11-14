@@ -16,6 +16,8 @@ from .validation_api import router as validation_router
 app.include_router(validation_router)
 from .spectrum.api import router as spectrum_router
 app.include_router(spectrum_router)
+from .resolve import router as resolve_router
+app.include_router(resolve_router)
 
 
 @app.exception_handler(ImageError)

@@ -51,3 +51,19 @@ Request parameters: `REQUEST=doQuery`, `LANG=ADQL`, `FORMAT=votable`, `MAXREC=10
 The sky background uses the genuine DSS2 color HiPS from STScI's public mirror:
 `https://stpubdata.s3.us-east-1.amazonaws.com/mast/skybackgrounds/DSSColor`.
 This mirror is published in the [official CDS survey registry](https://alasky.cds.unistra.fr/MocServer/query?ID=CDS%2FP%2FDSS2%2Fcolor&fmt=html&get=record). Its metadata and CORS headers were checked directly; browser tests confirm real HEALPix JPEG tile downloads. The mirror avoids this environment's CDS connectivity problem and IRSA's missing CORS headers on its DSS2 mirror. No sky images are baked into the application.
+
+## Name resolver
+
+Checked on 2026-11-14 against the live service. `GET /api/resolve?name=…` asks [CDS Sesame](https://cds.unistra.fr/cgi-bin/Sesame) for XML (`-ox`) from SIMBAD, then NED, then VizieR (`SNV`), stopping at the first that knows the name. It uses the same two addresses as astropy's resolver: `https://cds.unistra.fr/cgi-bin/nph-sesame/`, which currently redirects to a regional VizieR mirror, and `https://vizier.cfa.harvard.edu/viz-bin/nph-sesame/` as a fallback. Redirects are followed only to HTTPS Sesame paths, answers over 64 KB are refused, and an answer that is not Sesame XML counts as the service being unavailable.
+
+The reply keeps the catalogue's own name (`oname`), object type code (`otype`, with plain words for common SIMBAD types) and J2000 position in degrees (`jradeg`, `jdedeg`). Names that resolved during the check, with the name and type returned:
+
+| Typed | Catalogue name | Type | RA, Dec (°) |
+| --- | --- | --- | --- |
+| M31 | M 31 | AGN | 10.684708, +41.268750 |
+| Betelgeuse | * alf Ori | s*r (red supergiant) | 88.792939, +7.407064 |
+| NGC 1614 | NGC 1614 | Sy1 | 68.500113, −8.579047 |
+| Orion Nebula | M 42 | HII | 83.820100, −5.387600 |
+| L1527 | LDN 1527 | DNe (dark cloud) | 69.970800, +25.750000 |
+
+The last row is why the found name is always shown: "L1527" resolves to the centre of the dark cloud, about 0.3° from the embedded protostar that the guided spectrum target measures. Unknown names, and Solar System bodies such as Mars, return "Nothing found"; they are reported as not found, and nothing is guessed. Found and not-found answers are cached in memory (up to 256 names); failures are not cached.
