@@ -125,7 +125,7 @@ export default function App() {
       <DemoTargetSummary target={manifest?.targets.find(target => target.id === demoTargetId)}/>
       {manifest && <p>Reference ICRS RA {selected.ra.toFixed(6)}°, Dec {selected.dec.toFixed(6)}°. For tracking targets this reference is the first prepared frame; each image records its own center. The cutouts below retain native detector orientation and may have different coverage. Live Mode provides the interactive Aladin sky atlas.</p>}
     </section>}
-    <SpectrumPanel mode={mode} selected={selected} demoTargetId={demoTargetId} onGo={point => {select(point); setNavigation({...point});}}/>
+    <SpectrumPanel mode={mode} selected={selected} demoTargetId={demoTargetId} onGo={(point, fov) => {select(point); setNavigation({...point, fov});}}/>
     <div className="section-divider"><div className="eyebrow">THE EXPOSURES BEHIND THE SPECTRUM</div><p>Search, view and compare the individual SPHEREx images of this position.</p></div>
     <ObservationsTable mode={mode} result={result} loading={loading} error={error} selectedObservation={imageObservation} onViewImage={setImageObservation}
       compare={{...picks, onPick: pick}} target={selected}/>

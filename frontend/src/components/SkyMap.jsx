@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadAladin } from '../aladin';
 import { selectedFromClick } from '../coordinates';
+// Centre the map on a point. A `fov` (degrees) zooms in to that width, and never zooms out, so a
+// move of a few arcseconds is visible instead of being lost in a wide view.
+function goTo(map, {ra, dec, fov}) {
+  map.gotoRaDec(ra, dec);
+  if (fov && map.getFov()[0] > fov) map.setFoV(fov);
+}
 export default function SkyMap({ selected, navigation, onSelect, onFov }) {
   const host = useRef(null), api = useRef(null), catalog = useRef(null), A = useRef(null);
   const callbacks = useRef({onSelect, onFov});
@@ -24,7 +30,7 @@ export default function SkyMap({ selected, navigation, onSelect, onFov }) {
       catalog.current = a.catalog({name: 'Selected location', sourceSize: 22, color: '#66e6c4', shape: 'cross'});
       map.addCatalog(catalog.current);
       catalog.current.addSources([a.source(latest.current.selected.ra, latest.current.selected.dec)]);
-      if (latest.current.navigation) map.gotoRaDec(latest.current.navigation.ra, latest.current.navigation.dec);
+      if (latest.current.navigation) goTo(map, latest.current.navigation);
       map.on('click', event => {const point = selectedFromClick(event); if (point) callbacks.current.onSelect(point);});
       const updateFov = () => callbacks.current.onFov(map.getFov());
       map.on('zoomChanged', updateFov);
@@ -45,7 +51,11 @@ export default function SkyMap({ selected, navigation, onSelect, onFov }) {
     catalog.current.removeAll();
     catalog.current.addSources([A.current.source(selected.ra, selected.dec)]);
   }, [selected]);
-  useEffect(() => {if (navigation && api.current) api.current.gotoRaDec(navigation.ra, navigation.dec);}, [navigation]);
+  useEffect(() => {
+    if (!navigation || !api.current) return;
+    goTo(api.current, navigation);
+    callbacks.current.onFov(api.current.getFov());
+  }, [navigation]);
   return <div className="map-shell">
     <div ref={host} className="sky-map" data-testid="sky-map" aria-label="Interactive Aladin Lite celestial map"/>
     {status !== 'ready' && <div className="map-status" role="status">{status === 'loading' ? 'Connecting to Aladin Lite…' : 'Sky map unavailable. Check your connection and WebGL support, then reload.'}</div>}

@@ -7,6 +7,9 @@ import { describeFeature, fetchDemoSpectrum, fetchFeatures, fetchNearby, fetchRe
   redshiftedLines, seasonLabel, seasonSeries, shortDate, startSpectrum, usablePoints, wideRange } from '../spectrum';
 
 const POLL_MS = 1500;
+// Map width after snapping to a nearby source: wide enough to still show the position snapped from
+// (suggestions lie within 75 arcseconds), narrow enough that the move is visible.
+const SNAP_FOV_DEG = 0.1;
 
 function csvOf(job) {
   const keys = ['wavelength_um', 'bandwidth_um', 'flux_mjy', 'flux_err_mjy', 'status', 'utc', 'mjd', 'detector', 'obs_id', 'collection', 'ra', 'dec', 'flag_names', 'background_mjy_sr'];
@@ -110,17 +113,17 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
     } finally {if (run.current === controller) setBusy(false);}
   }
 
-  function measureAt(point, name) {
+  function measureAt(point, name, fov) {
     if (point.ra === selected.ra && point.dec === selected.dec) {measure(point, name); return;}
     pending.current = {key: `${point.ra}|${point.dec}`, body: point}; pending.label = name;
-    onGo(point);
+    onGo(point, fov);
   }
 
   function guided(target) {
     if (target.moving) {measure({target: target.moving}, target.name); return;}
     measureAt({ra: target.ra, dec: target.dec}, target.name);
   }
-  const snap = source => measureAt({ra: Number(source.ra.toFixed(6)), dec: Number(source.dec.toFixed(6))}, source.name);
+  const snap = source => measureAt({ra: Number(source.ra.toFixed(6)), dec: Number(source.dec.toFixed(6))}, source.name, SNAP_FOV_DEG);
 
   const features = catalogue?.features || [];
   const analysis = job?.analysis;
