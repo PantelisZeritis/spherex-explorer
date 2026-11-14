@@ -27,7 +27,6 @@ Proposed improvements to Arcadian SkyTracker, grouped by what each one adds. The
 ## Project health
 
 - **Continuous integration.** There is no CI. Backend tests, frontend unit tests, the build and the offline Playwright specs could run on every push, with the live-archive specs on a schedule.
-- **A licence.** The repository has no LICENSE file, which legally blocks reuse.
 - **Split dependencies and add linting.** `backend/requirements.txt` mixes runtime packages with pytest, and there is no linter or formatter configuration.
 - **Accessibility pass.** Keyboard and screen-reader support exists in places, but the sky map and charts need a proper audit.
 

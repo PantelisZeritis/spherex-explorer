@@ -222,4 +222,4 @@ These are proposed improvements, not current detection claims.
 
 ## License
 
-This repository currently has **no LICENSE file**. No open-source license terms have been specified by the project maintainers.
+The code is released under the [MIT License](LICENSE). The SPHEREx observations bundled in this repository come from NASA/IPAC IRSA; follow IRSA's acknowledgement guidelines when you use them.
