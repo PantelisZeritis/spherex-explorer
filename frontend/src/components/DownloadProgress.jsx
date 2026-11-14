@@ -10,7 +10,9 @@ export function useElapsed(runKey) {
     setElapsed(0);
     if (runKey == null) return;
     const started = performance.now();
-    const timer = setInterval(() => setElapsed(Math.floor((performance.now() - started) / 1000)), 1000);
+    // Checked four times a second: a one-second timer can fire a hair early, read 0.999 s, and skip
+    // a second on screen. Setting an unchanged value does not re-render.
+    const timer = setInterval(() => setElapsed(Math.floor((performance.now() - started) / 1000)), 250);
     return () => clearInterval(timer);
   }, [runKey]);
   return elapsed;
