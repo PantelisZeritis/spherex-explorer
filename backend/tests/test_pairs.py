@@ -132,7 +132,10 @@ def test_build_pair_report_uses_compare_sized_cutouts():
     irsa, service = FakeIRSA(), FakeService()
     report = build_pair_report(irsa, service, *M31, 'SPHEREx-D1', per_visit=1)
     assert irsa.calls == ['SPHEREx-D1']
-    assert [r[0] for r in service.requests] == ['p1-mid', 'p1-extra', 'p2-near', 'p3-mid']
+    # Candidates are prepared on parallel threads, so requests arrive in any order; each shortlisted
+    # observation is requested exactly once, and the report keeps the shortlist order.
+    assert sorted(r[0] for r in service.requests) == sorted(['p1-mid', 'p1-extra', 'p2-near', 'p3-mid'])
+    assert [c['obs_id'] for c in report['candidates']] == ['p1-mid', 'p1-extra', 'p2-near', 'p3-mid']
     assert {r[1] for r in service.requests} == {0.437}  # What /api/compare needs for a 0.3 deg grid.
     failed = next(c for c in report['candidates'] if c['obs_id'] == 'p1-extra')
     assert failed['error']['message'].startswith('IRSA could not deliver')
