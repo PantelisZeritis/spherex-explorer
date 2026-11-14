@@ -147,26 +147,30 @@ export function ComparisonResult({result}) {
   </div>;
 }
 
-export default function ComparePanel({picks, target, onRemove, onSwap, initialResult = null, onResult}) {
+export default function ComparePanel({picks, target, onRemove, onSwap, initialResult = null, onResult, onCleared, autoRun = null}) {
   const {a, b} = picks;
   const moving=a?.demo_target_id==='3i-atlas' && b?.demo_target_id==='3i-atlas';
   const [trackingView,setTrackingView]=useState('fixed_sky');
-  const [mode, setMode] = useState(() => suggestMode(a, b));
+  // autoRun: a mode to compare in straight away, when a shared link names a comparison.
+  const [mode, setMode] = useState(() => autoRun || suggestMode(a, b));
   const [result, setResult] = useState(initialResult), [error, setError] = useState('');
   const [loading, setLoading] = useState(false), [run, setRun] = useState(0);
   const request = useRef(null);
   const elapsed = useElapsed(loading ? run : null);
-  useEffect(() => () => request.current?.abort(), []);
+  useEffect(() => {
+    if (autoRun && a && b) compare(autoRun);
+    return () => request.current?.abort();
+  }, []);
   const ready = Boolean(a && b);
   const suggested = suggestMode(a, b);
   const hints = pairHints(a, b, mode);
 
-  async function compare() {
+  async function compare(runMode = mode) {
     request.current?.abort();
     const controller = new AbortController(); request.current = controller;
     setRun(n => n + 1); setLoading(true); setResult(null); setError('');
     try {
-      const data = await requestComparison({a, b, target, mode, signal: controller.signal, trackingView:moving?trackingView:undefined});
+      const data = await requestComparison({a, b, target, mode: runMode, signal: controller.signal, trackingView:moving?trackingView:undefined});
       if (request.current === controller) {setResult(data); onResult?.(data);}
     } catch (err) {
       if (request.current === controller && controller.signal.reason !== 'user') setError(err.message);
@@ -174,7 +178,7 @@ export default function ComparePanel({picks, target, onRemove, onSwap, initialRe
       if (request.current === controller) setLoading(false);
     }
   }
-  function chooseMode(next) {request.current?.abort(); request.current=null; setLoading(false); setMode(next); setResult(null); setError('');}
+  function chooseMode(next) {request.current?.abort(); request.current=null; setLoading(false); setMode(next); setResult(null); setError(''); onCleared?.();}
 
   return <section className="panel compare-panel" aria-label="Image comparison" aria-busy={loading}>
     <div className="section-heading"><div><div className="eyebrow">COMPARE</div><h2>Compare two views of the same region of space</h2></div>
@@ -193,7 +197,7 @@ export default function ComparePanel({picks, target, onRemove, onSwap, initialRe
     <p className="result-note">{MODES[mode].description}</p>
     {hints.map(hint => <p key={hint} className="compare-hint" role="note">{hint}</p>)}
     {ready && a && b && <p className="result-note">{detectorOf(a) === detectorOf(b) ? 'Same detector' : 'Different detectors'} · {formatSeparation(hoursApart(a, b))} apart (archive times).</p>}
-    <button type="button" className="compare-run" disabled={!ready || loading || hints.some(hint => hint.startsWith('A and B are the same'))} onClick={compare}>
+    <button type="button" className="compare-run" disabled={!ready || loading || hints.some(hint => hint.startsWith('A and B are the same'))} onClick={() => compare()}>
       {loading ? 'Analyzing observations…' : 'Find Changes'}</button>
     {loading && <DownloadProgress title="Preparing the real images and checking whether their differences can be interpreted" local={Boolean(a?.demo && b?.demo)} elapsed={elapsed}
       onCancel={() => {request.current?.abort('user'); setLoading(false);}}/>}

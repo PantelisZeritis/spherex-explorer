@@ -55,7 +55,8 @@ function NearbyCard({state, kind, onMeasure, disabled}) {
   </aside>;
 }
 
-export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
+// shared: a spectrum named by a shared link, measured on opening. onSpectrum reports what is measured, for the link.
+export default function SpectrumPanel({mode, selected, demoTargetId, onGo, shared = null, onSpectrum}) {
   const [job, setJob] = useState(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   const [catalogue, setCatalogue] = useState(null), [reference, setReference] = useState(null);
   const [logChoice, setLog] = useState(null), [redshift, setRedshift] = useState(''), [label, setLabel] = useState('');
@@ -81,9 +82,13 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
       .catch(err => {if (nearbyRun.current === controller && !controller.signal.aborted) setNearby({status: 'error', message: err.message});});
   }
   const pending = useRef(null);
+  const restore = useRef(shared);
   useEffect(() => {
-    if (pending.current?.key === key) {const body = pending.current.body; pending.current = null; measure(body, pending.label); return;}
+    if (pending.current?.key === key) {const {body, name, share} = pending.current; pending.current = null; measure(body, name, share); return;}
     stop(); setJob(null); setError(''); setBusy(false); setReference(null); setLabel(''); setLog(null);
+    const initial = restore.current; restore.current = null;
+    if (mode === 'live' && initial) {startShared(initial); return;}
+    onSpectrum?.(null);
     if (mode !== 'demo' || !demoTargetId) return;
     const controller = new AbortController(); run.current = controller;
     setBusy(true);
@@ -92,8 +97,8 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
       .finally(() => {if (run.current === controller) setBusy(false);});
   }, [key]);
 
-  async function measure(body, name = '') {
-    stop();
+  async function measure(body, name = '', share = 'here') {
+    stop(); onSpectrum?.(share);
     const controller = new AbortController(); run.current = controller;
     setJob(null); setError(''); setReference(null); setBusy(true); setLabel(name);
     try {
@@ -113,15 +118,21 @@ export default function SpectrumPanel({mode, selected, demoTargetId, onGo}) {
     } finally {if (run.current === controller) setBusy(false);}
   }
 
-  function measureAt(point, name, fov) {
-    if (point.ra === selected.ra && point.dec === selected.dec) {measure(point, name); return;}
-    pending.current = {key: `${point.ra}|${point.dec}`, body: point}; pending.label = name;
+  function measureAt(point, name, fov, share = 'here') {
+    if (point.ra === selected.ra && point.dec === selected.dec) {measure(point, name, share); return;}
+    pending.current = {key: `${point.ra}|${point.dec}`, body: point, name, share};
     onGo(point, fov);
   }
 
   function guided(target) {
-    if (target.moving) {measure({target: target.moving}, target.name); return;}
-    measureAt({ra: target.ra, dec: target.dec}, target.name);
+    if (target.moving) {measure({target: target.moving}, target.name, target.id); return;}
+    measureAt({ra: target.ra, dec: target.dec}, target.name, undefined, target.id);
+  }
+  // A link names "here" or a guided target; a guided fixed target is measured at the link's position.
+  function startShared(id) {
+    const target = GUIDED_TARGETS.find(item => item.id === id);
+    if (target?.moving) measure({target: target.moving}, target.name, target.id);
+    else measure({ra: selected.ra, dec: selected.dec}, target?.name || '', target ? target.id : 'here');
   }
   const snap = source => measureAt({ra: Number(source.ra.toFixed(6)), dec: Number(source.dec.toFixed(6))}, source.name, SNAP_FOV_DEG);
 

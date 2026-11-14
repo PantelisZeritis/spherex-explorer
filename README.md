@@ -149,6 +149,8 @@ Choose **Live Mode**, click the Aladin map or enter RA and Dec, then select **Se
 
 Live Mode needs access to **IRSA** for searches and FITS cutouts and to the external sky-survey service for Aladin's background tiles. New images can take time to download and process; repeated requests may use the local cache. Image products are fetched from the AWS Open Data mirror of the IRSA archive and cut locally into cutouts byte-identical to IRSA's, falling back to IRSA's own cutout service on any mirror problem; a new view typically takes under 10 seconds instead of about 20. A tray in the corner lists the downloads the server is working on, with a percentage only when the source states a size. See [Live Mode speed](docs/live-mode-speed.md). The inspector requests a small cutout by default and offers an explicit full-detector option. Search and image retrieval have bounded time and size limits; an unavailable archive returns an error rather than invented observations.
 
+The address bar always describes the current view: position, map zoom, wavelength filter, search, the observations picked as A and B, any comparison, the open image and the measured spectrum. **Copy link to this view** in the header copies it, and opening the link repeats the same archive requests. The archive can answer differently later; an observation it no longer returns is reported, never substituted.
+
 Same-detector images can still represent different wavelengths at the selected position. A difference preview or an accepted visual comparison does not by itself establish physical variability. Scientific screening stays unavailable when essential calibration, spectral, registration, PSF, or uncertainty evidence is missing.
 
 ## Example: explore 3I/ATLAS

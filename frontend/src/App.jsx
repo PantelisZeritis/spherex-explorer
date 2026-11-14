@@ -13,6 +13,23 @@ import { demoResult, loadDemoManifest } from './demoAdapter';
 import WavelengthFilter from './components/WavelengthFilter';
 import SpectrumPanel from './components/SpectrumPanel';
 import { ALL_FILTER, filterParams, filterDemoResult } from './wavelengths';
+import { findObservation, readShare, writeShare } from './shareLink';
+import { GUIDED_TARGETS } from './spectrumTargets';
+const DEFAULT_POSITION = {ra: 210.80227, dec: 54.34895};
+const compareKey = (a, b, target) => `${a?.access_url}|${b?.access_url}|${target.ra}|${target.dec}`;
+
+function CopyLink() {
+  const [message, setMessage] = useState('');
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  async function copy() {
+    try {await navigator.clipboard.writeText(window.location.href); setMessage('Link copied');}
+    catch {setMessage('Copy the address bar to share');}
+    clearTimeout(timer.current); timer.current = setTimeout(() => setMessage(''), 2500);
+  }
+  return <button type="button" className="share-link" onClick={copy} data-testid="copy-link" aria-live="polite"
+    title="The link opens this position, zoom, filter, search, picked observations and spectrum">{message || 'Copy link to this view'}</button>;
+}
 const MODES = [
   {id:'live', icon:'◉', badge:'Needs internet', title:'Live Mode', tagline:'Query NASA/IPAC IRSA in real time', points:['Pick any point on the interactive sky atlas','Its 0.75–5 µm spectrum from every SPHEREx exposure'], best:'exploring your own targets'},
   {id:'demo', icon:'▶', badge:'Works offline', title:'Demo Mode', tagline:'Instant tour of preloaded real observations', points:['Curated targets with spectra, ready immediately','No network or IRSA queries required'], best:'presentations & a quick first look'},
@@ -21,13 +38,21 @@ export default function App() {
   // Demo Mode is hidden from visitors: only an explicit ?mode=demo URL opens it, and only then is the mode choice shown.
   const [showModes] = useState(() => new URLSearchParams(window.location.search).get('mode') === 'demo');
   const [mode, setMode] = useState(() => showModes ? 'demo' : 'live');
+  // A shared Live Mode link (see shareLink.js), read once when the page opens.
+  const [shared] = useState(() => showModes ? null : readShare(window.location.search, GUIDED_TARGETS.map(target => target.id)));
   const [manifest, setManifest] = useState(null), [demoTargetId, setDemoTargetId] = useState('');
-  const [filter, setFilter] = useState(ALL_FILTER), [filterError, setFilterError] = useState('');
-  const [selected, setSelected] = useState({ra: 210.80227, dec: 54.34895});
-  const [navigation, setNavigation] = useState(null), [fov, setFov] = useState(null);
+  const [filter, setFilter] = useState(() => shared?.filter || ALL_FILTER), [filterError, setFilterError] = useState('');
+  const [selected, setSelected] = useState(() => shared?.position || DEFAULT_POSITION);
+  const [navigation, setNavigation] = useState(() => shared?.position || shared?.fov
+    ? {...(shared.position || DEFAULT_POSITION), fov: shared.fov, exact: true} : null);
+  const [fov, setFov] = useState(null);
   const [result, setResult] = useState(null), [error, setError] = useState(''), [loading, setLoading] = useState(false);
   const [imageObservation, setImageObservation] = useState(null);
   const [picks, setPicks] = useState({a: null, b: null});
+  const [compared, setCompared] = useState(null), [autoCompare, setAutoCompare] = useState(null);
+  const [spectrum, setSpectrum] = useState(null), [shareNote, setShareNote] = useState('');
+  // While a shared link's search is pending, the URL keeps the link as it was opened.
+  const restoring = useRef(Boolean(shared?.search));
   const request = useRef(null);
   useEffect(() => () => request.current?.abort(), []);
   function chooseDemoTarget(target, scienceNote, activeFilter = ALL_FILTER) {
@@ -44,7 +69,27 @@ export default function App() {
     setMode(next); setResult(null); setError(''); setLoading(false);
     setImageObservation(null); setManifest(null); setFov(null); setPicks({a: null, b: null});
   }
+  function changePicks(update) {setCompared(null); setAutoCompare(null); setPicks(update);}
+  function restoreShared(data) {
+    if (!restoring.current) return;
+    restoring.current = false;
+    const rows = data.observations || [];
+    const found = {a: findObservation(rows, shared.a), b: findObservation(rows, shared.b), view: findObservation(rows, shared.view)};
+    const missing = ['a', 'b', 'view'].filter(key => shared[key] && !found[key]).map(key => shared[key]);
+    if (missing.length) setShareNote(`The shared link names ${missing.join(', ')}, not found in this search. The archive may have changed since the link was made, or the search returned only its first ${rows.length} matches.`);
+    setPicks({a: found.a, b: found.b});
+    if (found.view) setImageObservation(found.view);
+    if (found.a && found.b && shared.compare) setAutoCompare({key: compareKey(found.a, found.b, selected), mode: shared.compare});
+  }
+  useEffect(() => {if (mode === 'live' && shared?.search) search(shared.filter || ALL_FILTER);}, []);
+  useEffect(() => {
+    if (mode !== 'live' || restoring.current) return;
+    const query = writeShare({position: selected, fov: fov?.[0], filter, searched: Boolean(result || loading || error),
+      a: picks.a, b: picks.b, view: imageObservation, compare: compared, spectrum});
+    if (query !== window.location.search) window.history.replaceState(window.history.state, '', `${window.location.pathname}${query}${window.location.hash}`);
+  }, [mode, selected, fov, filter, result, loading, error, picks, imageObservation, compared, spectrum]);
   function pick(role, row) {
+    setCompared(null); setAutoCompare(null);
     // Choosing a row already in the other slot moves it, so A and B never hold the same observation.
     setPicks(current => {
       const other = role === 'a' ? 'b' : 'a';
@@ -64,7 +109,7 @@ export default function App() {
       .finally(() => {if (request.current === controller) setLoading(false);});
     return () => controller.abort();
   }, [mode]);
-  function select(point) {setPicks({a: null, b: null}); setImageObservation(null); request.current?.abort(); request.current = null; setLoading(false); setSelected(point); setResult(null); setError('');}
+  function select(point) {restoring.current = false; setShareNote(''); changePicks({a: null, b: null}); setImageObservation(null); request.current?.abort(); request.current = null; setLoading(false); setSelected(point); setResult(null); setError('');}
   function changeFilter(next, apply) {
     setFilter(next); setFilterError('');
     if (apply && (result || loading || error)) search(next);
@@ -91,12 +136,12 @@ export default function App() {
       if (!response.ok || data.status !== 'live') throw new Error(data.message || (response.status >= 500
         ? 'The app\'s backend is not responding. Start it with ./scripts/start.sh (or ./scripts/backend.sh).'
         : 'The observation service is unavailable.'));
-      if (request.current === controller) setResult(data);
+      if (request.current === controller) {setResult(data); restoreShared(data);}
     } catch (err) {
       if (request.current === controller) setError(controller.signal.aborted ? 'The observation search timed out.' : err.message);
     } finally {clearTimeout(timeout); if (request.current === controller) setLoading(false);}
   }
-  return <div className="app"><header><a className="brand" href="/" aria-label="Arcadian SkyTracker home"><span className="brand-icon">✳</span><span>ARCADIAN<span className="brand-sub">SKYTRACKER</span></span></a><div className="header-context">NASA SPACE APPS CHALLENGE 2026 <span>Planet X & SPHEREx · Team prototype</span></div><span className="milestone">03 / SPECTRAL FINGERPRINTS</span></header>
+  return <div className="app"><header><a className="brand" href="/" aria-label="Arcadian SkyTracker home"><span className="brand-icon">✳</span><span>ARCADIAN<span className="brand-sub">SKYTRACKER</span></span></a><div className="header-context">NASA SPACE APPS CHALLENGE 2026 <span>Planet X & SPHEREx · Team prototype</span></div><div className="header-actions">{mode === 'live' && <CopyLink/>}<span className="milestone">03 / SPECTRAL FINGERPRINTS</span></div></header>
     <main>
     <section className="panel mode-panel" aria-label="Data mode">
       {showModes && <fieldset className="mode-choice" role="radiogroup" aria-label="Data mode">
@@ -111,6 +156,7 @@ export default function App() {
         </label>)}
       </fieldset>}
       <p role="note" className="mode-note">{mode === 'demo' ? 'DEMO MODE · Local, preloaded real SPHEREx data. No live IRSA query. PNGs are display previews, not scientific arrays.' : 'LIVE MODE · Observation searches and new cutouts require NASA/IPAC IRSA network access.'}</p>
+      {shareNote && <p role="status" className="share-note" data-testid="share-note">{shareNote}</p>}
       {mode === 'demo' && <>
         {loading && <p role="status">Loading preloaded target manifest…</p>}
         {manifest && <><label htmlFor="demo-target">Preloaded target</label><select id="demo-target" value={demoTargetId} onChange={event => chooseDemoTarget(manifest.targets.find(target => target.id === event.target.value), manifest.science_note)}>
@@ -127,13 +173,15 @@ export default function App() {
       <DemoTargetSummary target={manifest?.targets.find(target => target.id === demoTargetId)}/>
       {manifest && <p>Reference ICRS RA {selected.ra.toFixed(6)}°, Dec {selected.dec.toFixed(6)}°. For tracking targets this reference is the first prepared frame; each image records its own center. The cutouts below retain native detector orientation and may have different coverage. Live Mode provides the interactive Aladin sky atlas.</p>}
     </section>}
-    <SpectrumPanel mode={mode} selected={selected} demoTargetId={demoTargetId} onGo={(point, fov) => {select(point); setNavigation({...point, fov});}}/>
+    <SpectrumPanel mode={mode} selected={selected} demoTargetId={demoTargetId} shared={shared?.spectrum} onSpectrum={setSpectrum} onGo={(point, fov) => {select(point); setNavigation({...point, fov});}}/>
     <div className="section-divider"><div className="eyebrow">THE EXPOSURES BEHIND THE SPECTRUM</div><p>Search, view and compare the individual SPHEREx images of this position.</p></div>
     <ObservationsTable mode={mode} result={result} loading={loading} error={error} selectedObservation={imageObservation} onViewImage={setImageObservation}
       compare={{...picks, onPick: pick}} target={selected}/>
-    {result?.count > 0 && <ComparePanel key={`${picks.a?.access_url}|${picks.b?.access_url}|${selected.ra}|${selected.dec}`}
-      picks={picks} target={selected} onRemove={role => setPicks(current => ({...current, [role]: null}))}
-      onSwap={() => setPicks(current => ({a: current.b, b: current.a}))}/>}
+    {result?.count > 0 && <ComparePanel key={compareKey(picks.a, picks.b, selected)}
+      picks={picks} target={selected} onRemove={role => changePicks(current => ({...current, [role]: null}))}
+      onSwap={() => changePicks(current => ({a: current.b, b: current.a}))}
+      autoRun={autoCompare?.key === compareKey(picks.a, picks.b, selected) ? autoCompare.mode : null}
+      onResult={data => setCompared(data?.validation?.mode || null)} onCleared={() => setCompared(null)}/>}
     {import.meta.env.VITE_ENABLE_DETECTION_LAB === 'true' && <DetectionLab/>}
     <TemporalImageExplorer result={result} loading={loading} error={error} target={selected}/>
     <ImageInspector observation={imageObservation} target={selected}/></main><footer><span>Arcadian SkyTracker · Milestone 03</span><span>Sky atlas by <a href="https://aladin.cds.unistra.fr/AladinLite/">Aladin Lite / CDS</a> · DSS2 imagery · Observations from <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html">NASA/IPAC IRSA</a></span></footer><DownloadTray enabled={mode === 'live'}/></div>;

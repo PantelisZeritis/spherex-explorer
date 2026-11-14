@@ -48,6 +48,7 @@ npm --prefix frontend run test:browser -- tests/browser/demo.spec.js   # single 
 ### Frontend (`frontend/src/`)
 - `App.jsx` holds the mode and selection state. `components/*.jsx` contain the UI. Pure logic lives in plain `.js` modules (`spectrum.js`, `timeline.js`, `wavelengths.js`, `plainSummary.js`, `*Adapter.js`, …) so the `node --test` unit tests can import it without a bundler. Keep explicit `.js` extensions on those imports.
 - The `*Adapter.js` modules hold the API contracts with the backend. The comment block at the top of `imageAdapter.js` documents the `POST /api/images` contract the Time Slider relies on.
+- Live Mode state is mirrored into the URL (`shareLink.js`, written with `history.replaceState` in `App.jsx`). A shared link is read once on load and replayed: search, then A/B picks, open image and comparison (`ComparePanel` `autoRun`), and spectrum (`SpectrumPanel` `shared`). New view state that should survive a shared link needs a parameter there.
 - Vite proxies `/api` to `SKYTRACKER_API_TARGET` (default `http://127.0.0.1:8000`). Aladin Lite is imported dynamically (it is a large chunk).
 
 ## Scientific-integrity rules (enforced in code and tests)

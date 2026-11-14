@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { loadAladin } from '../aladin';
 import { selectedFromClick } from '../coordinates';
 // Centre the map on a point. A `fov` (degrees) zooms in to that width, and never zooms out, so a
-// move of a few arcseconds is visible instead of being lost in a wide view.
-function goTo(map, {ra, dec, fov}) {
+// move of a few arcseconds is visible instead of being lost in a wide view. `exact` (a shared link)
+// sets the width as given.
+function goTo(map, {ra, dec, fov, exact}) {
   map.gotoRaDec(ra, dec);
-  if (fov && map.getFov()[0] > fov) map.setFoV(fov);
+  if (fov && (exact || map.getFov()[0] > fov)) map.setFoV(fov);
 }
 export default function SkyMap({ selected, navigation, onSelect, onFov }) {
   const host = useRef(null), api = useRef(null), catalog = useRef(null), A = useRef(null);
@@ -22,7 +23,8 @@ export default function SkyMap({ selected, navigation, onSelect, onFov }) {
       A.current = a;
       const survey = a.HiPS('https://stpubdata.s3.us-east-1.amazonaws.com/mast/skybackgrounds/DSSColor');
       survey.query.catch(() => {if (!cancelled) setSurveyError(true);});
-      const map = a.aladin(host.current, {survey, target: '210.80227 54.34895', fov: 12,
+      const start = latest.current.navigation || latest.current.selected;
+      const map = a.aladin(host.current, {survey, target: `${start.ra} ${start.dec}`, fov: start.fov || 12,
         cooFrame: 'ICRSd', mode: 'dark', backgroundColor: 'rgb(5, 10, 18)', showReticle: false, showCooGridControl: true, showFullscreenControl: true, showProjectionControl: false});
       api.current = map;
       // Local development probe used by browser integration tests.
