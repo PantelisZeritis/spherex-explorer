@@ -4,8 +4,7 @@ Proposed improvements to Arcadian SkyTracker, grouped by what each one adds. The
 
 ## Reach: use it without installing anything
 
-- **Fully static Demo Mode.** Demo Mode still needs the backend for pixel readouts, comparisons and spectra. Precomputing those for the 60 bundled frames when the bundle is built would let the demo run from a static host such as GitHub Pages, so judges and teachers get a link with no setup.
-- **Shareable links.** Only `?mode=demo` is kept in the URL today. Encoding the position, filter, selected A/B pair and spectrum target would make any finding a link someone else can open.
+- **Shareable links.** The URL does not record what you are looking at. Encoding the position, filter, selected A/B pair and spectrum target would make any finding a link someone else can open.
 - **Search by object name.** Live Mode takes a map click or RA/Dec only. A name resolver (CDS Sesame) would let people type "M31" or "Betelgeuse".
 - **Docker image.** One command to run both servers, with the Python and Node versions pinned.
 
@@ -34,6 +33,6 @@ Proposed improvements to Arcadian SkyTracker, grouped by what each one adds. The
 
 ## Suggested order
 
-1. Static Demo Mode, shareable links and CI. They are the cheapest way to put the project in front of more people, and none needs new scientific validation.
+1. Shareable links and CI. They are the cheapest way to put the project in front of more people, and none needs new scientific validation.
 2. Horizons-based moving objects and light curves, the strongest new features. Each needs a `docs/` write-up validated against known sources, as the existing features have.
 3. The learning features and the remaining project-health items.
